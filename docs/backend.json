@@ -1,0 +1,202 @@
+{
+  "entities": {
+    "AnalysisResult": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AnalysisResult",
+      "type": "object",
+      "description": "Represents the result of analyzing content for scam or fake news indicators.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the analysis result."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who performed the analysis. (Relationship: User 1:N AnalysisResult)"
+        },
+        "content": {
+          "type": "string",
+          "description": "The content that was analyzed (SMS, email, etc.)."
+        },
+        "informationStatus": {
+          "type": "string",
+          "description": "The identified status of the information (REAL, FAKE, SCAM)."
+        },
+        "probabilityTrue": {
+          "type": "number",
+          "description": "Probability (percentage) that the information is true."
+        },
+        "probabilityFalseScam": {
+          "type": "number",
+          "description": "Probability (percentage) that the information is false or a scam."
+        },
+        "informationType": {
+          "type": "string",
+          "description": "The type of scam or fake news identified (e.g., Phishing, Financial Scam)."
+        },
+        "simpleExplanation": {
+          "type": "string",
+          "description": "A simplified explanation of why the content is risky or safe."
+        },
+        "warningSafetyAdvice": {
+          "type": "string",
+          "description": "Actionable advice on what steps users should take."
+        },
+        "finalVerdict": {
+          "type": "string",
+          "description": "A one-line verdict summarizing the analysis."
+        },
+        "analysisTimestamp": {
+          "type": "string",
+          "description": "Timestamp of when the analysis was performed.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "content",
+        "informationStatus",
+        "probabilityTrue",
+        "probabilityFalseScam",
+        "informationType",
+        "simpleExplanation",
+        "warningSafetyAdvice",
+        "finalVerdict",
+        "analysisTimestamp"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "username": {
+          "type": "string",
+          "description": "Username of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "registrationDate": {
+          "type": "string",
+          "description": "Date and time when the user registered.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "email",
+        "registrationDate"
+      ]
+    },
+    "AppSetting": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AppSetting",
+      "type": "object",
+      "description": "Represents application settings for a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the app setting."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who owns this setting. (Relationship: User 1:N AppSetting)"
+        },
+        "aiChatbotEnabled": {
+          "type": "boolean",
+          "description": "Indicates if the AI chatbot is enabled for the user."
+        },
+        "appTheme": {
+          "type": "string",
+          "description": "The selected theme for the application (e.g., light, dark)."
+        },
+        "notificationEnabled": {
+          "type": "boolean",
+          "description": "Indicates if notifications are enabled for the user."
+        }
+      },
+      "required": [
+        "id",
+        "userId"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous",
+      "google.com"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Each document is uniquely identified by the user's UID. Used to store core user information such as username, email, and registration date.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/analysis_results/{analysisResultId}",
+        "definition": {
+          "entityName": "AnalysisResult",
+          "schema": {
+            "$ref": "#/backend/entities/AnalysisResult"
+          },
+          "description": "Stores analysis results for each user. Path-based ownership ensures only the user can access their own analysis results.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "analysisResultId",
+              "description": "The unique identifier for the analysis result."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/app_settings/{appSettingId}",
+        "definition": {
+          "entityName": "AppSetting",
+          "schema": {
+            "$ref": "#/backend/entities/AppSetting"
+          },
+          "description": "Stores application settings for each user. Path-based ownership ensures only the user can access their own settings.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "appSettingId",
+              "description": "The unique identifier for the app setting."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to ensure security, scalability, and ease of debugging, in accordance with the stated principles.  Authorization Independence is achieved by leveraging path-based ownership for `AnalysisResult` and `AppSetting` documents.  Data is stored under `/users/{userId}` to directly tie it to the authenticated user, eliminating the need for complex `get()` calls in security rules. Segregation is maintained by storing user-specific settings in their own collections (`/users/{userId}/app_settings`). This structural segregation supports secure `list` operations (QAPs) because rules can be applied at the collection level without filtering based on document content. This is particularly important for ensuring that users can only access their own data. The design prioritizes simplicity and debuggability. The structure uses consistent naming conventions and explicit state modeling (e.g., consistent field names like `userId` for ownership) to improve clarity and maintainability."
+  }
+}

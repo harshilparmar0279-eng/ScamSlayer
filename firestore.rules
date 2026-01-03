@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for reusable logic
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Public access for analysis results
+    match /public_analysis_results/{resultId} {
+      allow get: if true;
+      allow create: if true;
+      allow update, delete: if false; // Disallow modification and deletion by public
+    }
+    
+    // Explicitly allow list on the collection for public access
+    match /public_analysis_results {
+        allow list: if true;
+    }
+
+    // User-specific data, only accessible by the owner
+    match /users/{userId} {
+      allow get, create, update, delete: if isOwner(userId);
+      allow list: if false; // Prevent user enumeration
+
+      match /analysis_results/{analysisResultId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /app_settings/{appSettingId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}
